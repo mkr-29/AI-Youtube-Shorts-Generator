@@ -156,3 +156,4 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
+

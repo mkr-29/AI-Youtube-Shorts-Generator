@@ -78,9 +78,8 @@ def preflight(args=None):
     if not shutil.which("ffprobe"):
         problems.append("ffprobe not found on PATH — it ships with ffmpeg.")
 
-    for key in ("GEMINI_API_KEY", "PEXELS_API_KEY"):
-        if not os.getenv(key):
-            problems.append(f"{key} is not set — add it to your .env file.")
+    if not os.getenv("GEMINI_API_KEY"):
+        problems.append("GEMINI_API_KEY is not set — add it to your .env file.")
 
     avatar = os.path.join(os.getcwd(), "assets", "avatar", "avatars.mp4")
     if not os.path.exists(avatar):
