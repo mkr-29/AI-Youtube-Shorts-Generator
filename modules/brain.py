@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEFAULT_MODEL = "gemini-3.5-flash"
+FALLBACK_MODELS = ["gemini-3.5-flash", "gemini-3.8-flash", "gemini-3.1-flash-lite", "gemini-2.5-pro"]
 
 # Gemini returns these when it is overloaded or rate-limiting rather than when
 # the request itself is wrong, so they are worth waiting out.
@@ -24,45 +25,51 @@ def _get_client():
     return genai.Client(api_key=api_key)
 
 def _get_model():
-    # An unset CI variable arrives as an empty string, not as None.
     return os.getenv("GEMINI_MODEL") or DEFAULT_MODEL
 
 def _is_retryable(error):
     status = getattr(error, "code", None) or getattr(error, "status_code", None)
     if status in RETRYABLE_STATUSES:
         return True
-    # Not every client error exposes a numeric code, so fall back to the text.
     text = str(error)
     return any(str(code) in text for code in RETRYABLE_STATUSES)
 
 def _retry_delay(error):
-    """
-    Reads the retryDelay Gemini attaches to a 429. Plain backoff is often
-    shorter than what the server actually wants, which just burns the retries.
-    """
     match = re.search(r"'retryDelay':\s*'(\d+(?:\.\d+)?)s'", str(error))
     if not match:
         return None
-    # Cap it: a daily quota reports delays no run should sit and wait out.
     return min(float(match.group(1)) + 1, MAX_RETRY_WAIT)
 
-def _generate(prompt, retries=4):
+def _generate(prompt, retries=3):
     """
-    Calls Gemini, waiting out the overload and rate-limit responses that a
-    scheduled run hits regularly. Raises once the model is genuinely unreachable.
+    Calls Gemini with multi-model fallback and rate-limit recovery.
+    If the requested model is deprecated (404) or unavailable, it automatically
+    cascades through available fallback models so runs never crash unexpectedly.
     """
     client = _get_client()
-    model = _get_model()
+    preferred = _get_model()
+    candidate_models = [preferred] + [m for m in FALLBACK_MODELS if m != preferred]
 
-    for attempt in range(retries):
-        try:
-            return client.models.generate_content(model=model, contents=prompt)
-        except Exception as e:
-            if attempt == retries - 1 or not _is_retryable(e):
-                raise
-            wait = _retry_delay(e) or 2 ** (attempt + 1)
-            print(f"   ⚠️ Gemini unavailable (attempt {attempt+1}/{retries}). Retrying in {wait:.0f}s...")
-            time.sleep(wait)
+    last_error = None
+    for model in candidate_models:
+        for attempt in range(retries):
+            try:
+                return client.models.generate_content(model=model, contents=prompt)
+            except Exception as e:
+                last_error = e
+                err_str = str(e)
+                # If model is 404 (deprecated / not found for user), switch immediately to next model
+                if "404" in err_str or "NOT_FOUND" in err_str:
+                    print(f"   ⚠️ Model '{model}' not found or deprecated. Switching to fallback...")
+                    break
+                if attempt == retries - 1:
+                    print(f"   ⚠️ Model '{model}' exhausted attempts ({err_str[:60]}). Trying next candidate...")
+                    break
+                wait = _retry_delay(e) or 2 ** (attempt + 1)
+                print(f"   ⚠️ Gemini busy on '{model}' (attempt {attempt+1}/{retries}). Waiting {wait:.0f}s...")
+                time.sleep(wait)
+
+    raise RuntimeError(f"All Gemini candidate models failed. Last error: {last_error}")
 
 class ContentBrain:
     def get_trending_topic(self):
