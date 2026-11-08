@@ -131,7 +131,7 @@ def upload_batch(count=VIDEOS_PER_DAY):
         log(f"📝 Título: {meta.get('title')}")
         log(f"🏷️  Tags: {', '.join(meta.get('tags', [])[:8])}...")
 
-        lang_code = meta.get('language') or 'pt-BR'
+        lang_code = meta.get('language') or 'en'
         try:
             response = upload_video(
                 youtube=youtube,
@@ -144,18 +144,33 @@ def upload_batch(count=VIDEOS_PER_DAY):
                 default_audio_language=lang_code
             )
 
-            if response:
+            ig_url = None
+            if os.getenv("INSTAGRAM_ACCESS_TOKEN") and os.getenv("INSTAGRAM_ACCOUNT_ID"):
+                try:
+                    from modules.instagram_publisher import InstagramPublisher
+                    log("📸 [Instagram] Publishing Reel...")
+                    ig_pub = InstagramPublisher()
+                    caption = f"{meta.get('title', '')}\n\n{meta.get('description', '')}"
+                    ig_url = ig_pub.publish_reel(video_path=video_path, caption=caption)
+                except Exception as ig_err:
+                    log(f"⚠️ [Instagram] Reel publication failed: {ig_err}")
+
+            if response or ig_url:
                 success += 1
                 history_entry = {
                     "filename": video,
-                    "video_id": response.get('id'),
+                    "video_id": response.get('id') if response else None,
                     "title": meta.get('title'),
-                    "url": f"https://youtu.be/{response.get('id')}",
+                    "youtube_url": f"https://youtu.be/{response.get('id')}" if response else None,
+                    "instagram_url": ig_url,
                     "uploaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
                 }
                 history.append(history_entry)
                 save_history(history)
-                log(f"🎉 Enviado! https://youtu.be/{response.get('id')}")
+                if response:
+                    log(f"🎉 YouTube Short: https://youtu.be/{response.get('id')}")
+                if ig_url:
+                    log(f"🎉 Instagram Reel: {ig_url}")
 
         except Exception as e:
             log(f"❌ Falha: {e}")

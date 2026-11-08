@@ -98,9 +98,9 @@ async def generate_one(args):
     """
     Runs the full pipeline once. Returns the final video path, or None on failure.
     """
-    lang = getattr(args, 'lang', 'pt-BR')
-    default_voice = 'pt-BR-FranciscaNeural' if lang == 'pt-BR' else 'en-US-AvaNeural'
-    voice = args.voice if args.voice != 'en-US-AvaNeural' else default_voice
+    lang = getattr(args, 'lang', 'en')
+    default_voice = 'en-US-ChristopherNeural' if lang == 'en' else 'pt-BR-FranciscaNeural'
+    voice = args.voice if args.voice != 'en-US-ChristopherNeural' else default_voice
 
     # 1. BRAIN: Get Script
     brain = ContentBrain()
@@ -146,24 +146,33 @@ async def generate_one(args):
     output_name = args.output if (args.output and args.runs == 1) else build_output_name()
     final_path = composer.concatenate_with_transitions(final_scene_paths, output_name)
 
-    # 6. PUBLISH (optional)
-    if final_path and args.upload:
+    # 6. PUBLISH (YouTube & Instagram)
+    if final_path and (args.upload or getattr(args, 'upload_instagram', False)):
         metadata = brain.generate_metadata(topic, script)
-        try:
-            # Imported here so the render-only path never needs the Google
-            # client libraries installed.
-            from modules.publisher import YouTubeUploader
+        if args.upload:
+            try:
+                from modules.publisher import YouTubeUploader
 
-            YouTubeUploader().upload(
-                final_path,
-                title=metadata['title'],
-                description=metadata['description'],
-                tags=metadata['tags'],
-                privacy_status=args.privacy,
-            )
-        except Exception as e:
-            # The video rendered fine; a failed upload should not discard it.
-            print(f"❌ Upload Error: {e}")
+                YouTubeUploader().upload(
+                    final_path,
+                    title=metadata['title'],
+                    description=metadata['description'],
+                    tags=metadata['tags'],
+                    privacy_status=args.privacy,
+                )
+            except Exception as e:
+                print(f"❌ YouTube Upload Error: {e}")
+
+        # Instagram Reels Upload
+        if os.getenv("INSTAGRAM_ACCESS_TOKEN") and os.getenv("INSTAGRAM_ACCOUNT_ID"):
+            try:
+                from modules.instagram_publisher import InstagramPublisher
+                print("📸 [Instagram] Publishing Reel...")
+                ig_pub = InstagramPublisher()
+                caption = f"{metadata['title']}\n\n{metadata['description']}"
+                ig_pub.publish_reel(final_path, caption=caption)
+            except Exception as e:
+                print(f"❌ Instagram Upload Error: {e}")
 
     if final_path and not args.keep_cache:
         clean_cache()
@@ -219,13 +228,14 @@ def parse_args(argv=None):
     )
     parser.add_argument("--topic", help="Skip the AI topic picker and use this topic.")
     parser.add_argument("--runs", type=int, default=1, help="How many videos to generate (default: 1).")
-    parser.add_argument("--lang", choices=["pt-BR", "en"], default="pt-BR", help="Language for voiceover and script (default: pt-BR).")
-    parser.add_argument("--voice", default="en-US-AvaNeural", help="edge-tts voice.")
+    parser.add_argument("--lang", choices=["pt-BR", "en"], default="en", help="Language for voiceover and script (default: en).")
+    parser.add_argument("--voice", default="en-US-ChristopherNeural", help="edge-tts voice (default: en-US-ChristopherNeural).")
     parser.add_argument("--output", help="Output filename for a single run (default: timestamped).")
     parser.add_argument("--keep-cache", action="store_true", help="Keep intermediate audio/video files.")
     parser.add_argument("--fail-fast", action="store_true", help="Stop the batch on the first failed run.")
     parser.add_argument("--check", action="store_true", help="Run preflight checks and exit.")
     parser.add_argument("--upload", action="store_true", help="Upload each finished video to YouTube.")
+    parser.add_argument("--upload-instagram", action="store_true", help="Upload each finished video to Instagram Reels.")
     parser.add_argument("--privacy", choices=("private", "unlisted", "public"), default="private",
                         help="Privacy status for uploads (default: private).")
 

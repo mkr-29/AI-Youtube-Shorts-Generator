@@ -1,6 +1,7 @@
 # Dependencies
 node_modules/
 venv/
+.venv/
 
 # Environment variables (Critical for security)
 .env

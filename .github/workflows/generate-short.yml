@@ -1,8 +1,8 @@
-name: Generate Short
+name: Generate Short & Reel
 
 on:
   schedule:
-    # 09:00 UTC daily
+    # 09:00 UTC daily (2:30 PM IST)
     - cron: "0 9 * * *"
   workflow_dispatch:
     inputs:
@@ -18,27 +18,31 @@ on:
       voice:
         description: "edge-tts voice"
         required: false
-        default: "en-US-AvaNeural"
+        default: "en-US-ChristopherNeural"
         type: string
-      upload:
-        description: "Upload the result to YouTube"
+      upload_youtube:
+        description: "Upload to YouTube Shorts"
         required: false
-        default: false
+        default: true
+        type: boolean
+      upload_instagram:
+        description: "Upload to Instagram Reels"
+        required: false
+        default: true
         type: boolean
       privacy:
-        description: "Privacy status for uploads"
+        description: "Privacy status for YouTube uploads"
         required: false
-        default: "private"
+        default: "public"
         type: choice
         options:
-          - private
-          - unlisted
           - public
+          - unlisted
+          - private
 
 jobs:
   generate:
     runs-on: ubuntu-latest
-    # Rendering 9 scenes plus the final stitch takes a while on a hosted runner.
     timeout-minutes: 60
 
     steps:
@@ -46,56 +50,57 @@ jobs:
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: pip
 
-      - name: Install ffmpeg
+      - name: Install ffmpeg and fonts
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          sudo apt-get install -y ffmpeg fonts-liberation fonts-freefont-ttf
 
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-      - name: Preflight
+      - name: Preflight Check
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
         run: python main.py --check
 
-      - name: Generate
+      - name: Generate & Publish
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
-          GEMINI_MODEL: ${{ vars.GEMINI_MODEL }}
-          # Passed as env rather than interpolated into the script, so a topic
-          # containing shell metacharacters cannot break out of the command.
+          GEMINI_MODEL: ${{ vars.GEMINI_MODEL || 'gemini-2.5-flash' }}
           INPUT_TOPIC: ${{ inputs.topic }}
           INPUT_RUNS: ${{ inputs.runs || '1' }}
-          INPUT_VOICE: ${{ inputs.voice || 'en-US-AvaNeural' }}
-          INPUT_UPLOAD: ${{ inputs.upload }}
-          INPUT_PRIVACY: ${{ inputs.privacy || 'private' }}
+          INPUT_VOICE: ${{ inputs.voice || 'en-US-ChristopherNeural' }}
+          INPUT_UPLOAD_YT: ${{ inputs.upload_youtube ?? true }}
+          INPUT_UPLOAD_IG: ${{ inputs.upload_instagram ?? true }}
+          INPUT_PRIVACY: ${{ inputs.privacy || 'public' }}
           YOUTUBE_CLIENT_ID: ${{ secrets.YOUTUBE_CLIENT_ID }}
           YOUTUBE_CLIENT_SECRET: ${{ secrets.YOUTUBE_CLIENT_SECRET }}
           YOUTUBE_REFRESH_TOKEN: ${{ secrets.YOUTUBE_REFRESH_TOKEN }}
+          INSTAGRAM_ACCESS_TOKEN: ${{ secrets.INSTAGRAM_ACCESS_TOKEN }}
+          INSTAGRAM_ACCOUNT_ID: ${{ secrets.INSTAGRAM_ACCOUNT_ID }}
         run: |
-          ARGS=(--runs "$INPUT_RUNS" --voice "$INPUT_VOICE")
+          ARGS=(--runs "$INPUT_RUNS" --voice "$INPUT_VOICE" --lang "en")
           if [ -n "$INPUT_TOPIC" ]; then
             ARGS+=(--topic "$INPUT_TOPIC")
           fi
-          if [ "$INPUT_UPLOAD" = "true" ]; then
+          if [ "$INPUT_UPLOAD_YT" = "true" ]; then
             ARGS+=(--upload --privacy "$INPUT_PRIVACY")
+          fi
+          if [ "$INPUT_UPLOAD_IG" = "true" ]; then
+            ARGS+=(--upload-instagram)
           fi
           python main.py "${ARGS[@]}"
 
-      - name: Upload video
-        # Publish whatever rendered, even if a later run in a batch failed.
+      - name: Upload Video Artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: short-${{ github.run_id }}
           path: assets/final/*.mp4
-          # A failed generate already fails the job; erroring here too would
-          # just bury the real cause under a second, misleading error.
           if-no-files-found: warn
           retention-days: 14
