@@ -1,9 +1,8 @@
 {
-  "name": "Arjun",
+  "name": "Arjun (Stickman Host)",
+  "style": "stickman_cartoon",
   "enabled": true,
-  "avatar_scenes_count": 2,
-  "character_dna": "Photorealistic cinematic portrait of a 30-year-old everyday Indian man, warm medium-dark dusky skin tone, defined jawline, kind expressive dark brown eyes, thick well-groomed chevron moustache, short textured black hair parted neatly, realistic skin texture with natural pores, looking directly into the camera, 9:16 vertical composition",
-  "camera_framing": "medium close-up portrait, upper chest and face visible, looking directly at viewer, 9:16 vertical ratio",
-  "style_modifiers": "cinematic lighting, 8k resolution, photorealistic, sharp focus, master portrait photography, highly detailed",
-  "negative_prompt": "cartoon, 3d render, anime, blurry, distorted face, fair skin, light eyes, clean shaven, western features, deformed lips, multiple people, bad anatomy"
+  "character_dna": "Cute minimalist stick figure character with a simple circle head, expressive cartoon eyes, small witty hand-drawn black moustache, stick limbs, minimalist line art, clean vector comic doodle style on solid white background",
+  "style_modifiers": "black ink doodle on clean white background, high contrast, clean vector lines, humorous comic strip style, 9:16 vertical comic panel, minimalist flat accents",
+  "negative_prompt": "photorealistic, 3d, realistic human face, skin, gradients, shading, blurry, photograph, complex background, watermark"
 }

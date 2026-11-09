@@ -178,3 +178,4 @@ class AvatarEngine:
         # 2. Animate & Lip-Sync
         output_video = os.path.join(self.temp_dir, f"avatar_scene_{scene_id}.mp4")
         return self.lip_sync_video(image_path, audio_path, duration, output_video)
+

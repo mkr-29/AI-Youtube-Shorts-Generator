@@ -65,30 +65,41 @@ class Composer:
                         .filter('fps', fps=30, round='up')
                     )
             else:
-                print(f"   ⚙️ Processing Scene {scene_id}: 🎞️ A/B Split Mode")
                 path_a, path_b = video_pair
-                duration_a = total_duration / 2
-                duration_b = (total_duration / 2) + 0.5
+                if not path_b:
+                    print(f"   🎬 Processing Scene {scene_id}: ✏️ Stickman Scene Mode")
+                    video_stream = (
+                        ffmpeg.input(path_a, stream_loop=-1)
+                        .trim(duration=total_duration + 0.5)
+                        .setpts('PTS-STARTPTS')
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
+                        .filter('crop', 1080, 1920)
+                        .filter('fps', fps=30, round='up')
+                    )
+                else:
+                    print(f"   ⚙️ Processing Scene {scene_id}: 🎞️ A/B Split Mode")
+                    duration_a = total_duration / 2
+                    duration_b = (total_duration / 2) + 0.5
 
-                stream_a = (
-                    ffmpeg.input(path_a, stream_loop=-1)
-                    .trim(duration=duration_a)
-                    .setpts('PTS-STARTPTS')
-                    .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
-                    .filter('crop', 1080, 1920)
-                    .filter('fps', fps=30, round='up')
-                )
+                    stream_a = (
+                        ffmpeg.input(path_a, stream_loop=-1)
+                        .trim(duration=duration_a)
+                        .setpts('PTS-STARTPTS')
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
+                        .filter('crop', 1080, 1920)
+                        .filter('fps', fps=30, round='up')
+                    )
 
-                stream_b = (
-                    ffmpeg.input(path_b, stream_loop=-1)
-                    .trim(duration=duration_b)
-                    .setpts('PTS-STARTPTS')
-                    .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
-                    .filter('crop', 1080, 1920)
-                    .filter('fps', fps=30, round='up')
-                )
+                    stream_b = (
+                        ffmpeg.input(path_b, stream_loop=-1)
+                        .trim(duration=duration_b)
+                        .setpts('PTS-STARTPTS')
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
+                        .filter('crop', 1080, 1920)
+                        .filter('fps', fps=30, round='up')
+                    )
 
-                video_stream = ffmpeg.concat(stream_a, stream_b, v=1, a=0)
+                    video_stream = ffmpeg.concat(stream_a, stream_b, v=1, a=0)
 
             # --- SUBTITLE BURNING LAYER ---
             if sub_path and os.path.exists(sub_path):
@@ -125,22 +136,29 @@ class Composer:
     def render_all_scenes(self, script_data, video_pairs):
         rendered_paths = []
         avatar_indices = []
-        use_dynamic_avatar = self.avatar_engine.persona.get("enabled", True)
+        persona_style = self.avatar_engine.persona.get("style", "realistic")
+        use_dynamic_avatar = (
+            self.avatar_engine.persona.get("enabled", True)
+            and persona_style != "stickman_cartoon"
+        )
 
         # 1. Identify which scenes should be Avatar scenes
-        # First check if script explicitly flagged avatar scenes
-        flagged_indices = [i for i, s in enumerate(script_data) if s.get("is_avatar")]
-        if flagged_indices:
-            avatar_indices = flagged_indices
-        elif use_dynamic_avatar and len(script_data) >= 4:
-            # Auto-assign 1 or 2 middle scenes if none explicitly flagged
-            valid_range = list(range(1, len(script_data) - 1))
-            count_to_pick = min(self.avatar_engine.persona.get("avatar_scenes_count", 2), len(valid_range))
-            avatar_indices = sorted(random.sample(valid_range, count_to_pick))
+        if use_dynamic_avatar:
+            # First check if script explicitly flagged avatar scenes
+            flagged_indices = [i for i, s in enumerate(script_data) if s.get("is_avatar")]
+            if flagged_indices:
+                avatar_indices = flagged_indices
+            elif len(script_data) >= 4:
+                # Auto-assign 1 or 2 middle scenes if none explicitly flagged
+                valid_range = list(range(1, len(script_data) - 1))
+                count_to_pick = min(self.avatar_engine.persona.get("avatar_scenes_count", 2), len(valid_range))
+                avatar_indices = sorted(random.sample(valid_range, count_to_pick))
 
         if avatar_indices:
             human_readable = [i + 1 for i in avatar_indices]
             print(f"👤 Character Avatar scheduled for Scenes: {human_readable}")
+        elif persona_style == "stickman_cartoon":
+            print("✏️ Stickman Cartoon Mode: All scenes rendered as custom animated stickman doodle panels.")
 
         for i, scene in enumerate(script_data):
             current_pair = video_pairs[i] if i < len(video_pairs) else None

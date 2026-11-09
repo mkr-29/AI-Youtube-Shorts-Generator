@@ -83,61 +83,52 @@ class ContentBrain:
         print(f"🎯 Selected Topic: {topic}")
         return topic
 
-    def generate_script(self, topic, lang="pt-BR"):
+    def generate_script(self, topic, lang="en"):
         """
-        Generates a structured JSON script with visual cues.
+        Generates a structured JSON script with literal stickman comic visual prompts.
         """
-        lang_instruction = "Strictly in PORTUGUESE (Brasil)" if lang == "pt-BR" else "Strictly in ENGLISH"
-        print(f"📝 Writing script in {lang} for: {topic}...")
+        lang_instruction = "Strictly in ENGLISH" if lang == "en" else "Strictly in PORTUGUESE (Brasil)"
+        print(f"📝 Writing Stickman Cartoon Explainer script in {lang} for: {topic}...")
         prompt = f"""
-    You are the lead scriptwriter for a high-retention "Edutainment" YouTube Shorts channel.
+    You are the lead creator for a viral Stickman Explainer channel (like MinutePhysics, Casually Explained, or OverSimplified).
     Topic: {topic}
 
     ### GOAL:
-    Create a script where every sentence has a "Visual Switch". 
-    To keep retention high, we need TWO different stock videos for every single scene.
+    Write a 35-45 second hilarious, mind-blowing edutainment script.
+    Every sentence MUST be accompanied by a specific, funny, literal STICKMAN CARTOON DOODLE prompt.
 
-    ### 1. SCRIPT REQUIREMENTS (The Voiceover):
-    - **Language:** Write the text strictly in {lang_instruction}.
-    - **Perspective:** Strictly **3rd Person** ("Scientists found..." / "Cientistas descobriram...").
-    - **Tone:** Engaging, fast-paced, logical. No fluff.
-    - **Structure:** 8-9 Scenes total.
-    - **Flow:** Hook -> Context -> Mechanism (How it works) -> Twist -> Outro.
+    ### 1. SCRIPT REQUIREMENTS (Voiceover):
+    - **Language:** Write the spoken text strictly in {lang_instruction}.
+    - **Tone:** Fast-paced, punchy, witty, engaging, and fascinating.
+    - **Structure:** 7 to 9 short scenes total (each sentence is 3 to 4 seconds).
+    - **Flow:** Hook (Mind-blowing paradox) -> Context -> How it works -> The Twist -> Outro.
 
-    ### 2. VISUAL REQUIREMENTS (Dual Visuals):
-    - For EVERY scene, provide TWO distinct search terms in **ENGLISH** (Pexels works best in English):
-      - **visual_1:** Matches the *start* of the sentence.
-      - **visual_2:** Matches the *end* of the sentence or provides a reaction/context.
-    - **Strictly Literal:** If the text is "The economy crashed," do NOT search "sad man". Search "Stock market red chart".
-
-    ### 3. HOST AVATAR REQUIREMENTS (Personal Branding):
-    - Choose EXACTLY 2 middle scenes (e.g., Scene 2 for Context setup, and Scene 6 or 7 for the Big Plot Twist) where our Host Avatar appears full-screen speaking directly to the camera.
-    - For these scenes, set "is_avatar": true.
-    - "avatar_outfit": Describe realistic clothing matching this specific video topic (e.g., "vintage brown leather archaeologist jacket", "white lab coat over navy shirt", "navy aviator bomber jacket", "1980s corporate suit").
-    - "avatar_background": Describe a cinematic environment matching this specific video topic (e.g., "dusty ancient library with glowing lanterns", "dark particle physics lab with blue lasers", "submerged submarine bridge with monitors").
-    - "avatar_expression": Describe his facial expression (e.g., "shocked and intrigued, wide eyes", "whispering an unbelievable secret", "intense and analytical").
-    - For all other non-avatar scenes, set "is_avatar": false.
+    ### 2. STICKMAN VISUAL DOODLE REQUIREMENTS:
+    For EVERY scene, describe a simple, funny stick figure comic illustration that LITERALLY acts out the sentence:
+    - **Stickman Action:** What the stick figure is doing (e.g. running away screaming, trading a soda can for a tank, pointing at a giant whiteboard with crazy arrows, crying over an empty wallet).
+    - **Props & Costumes:** Simple hand-drawn stick props (e.g. funny hats, tiny magnifying glasses, giant coins, oversized rockets).
+    - **Expressions:** Simple comic eyes and mouths (e.g. big shocked circle eyes, sweat drop, devil grin, dizzy spiral eyes).
+    - **Cartoon Keywords:** 2 to 3 simple nouns describing the visual for comic illustration search (e.g. "soda submarine cartoon", "broken bone healing cartoon").
+    - **Camera Motion:** Choose one of: "zoom_in" (comedic punch), "zoom_out" (reveal wider context), "pan_right" (timeline/steps), or "drift".
+    - **Mood:** Choose one of: "shocking", "pointing", "funny", "curious", "celebrating", "scientific".
 
     ### OUTPUT FORMAT (Strict JSON):
     [
         {{
             "id": 1,
-            "text": "In 1995, fourteen wolves were released into Yellowstone Park, and they changed the rivers.",
-            "is_avatar": false,
-            "visual_1": "wolves running snow aerial",
-            "visual_2": "river flowing forest drone",
-            "mood": "intriguing" 
+            "text": "In 1989, a soda company suddenly became the owner of the world's sixth-largest navy.",
+            "stickman_prompt": "A surprised stick figure holding a giant blue soda can, while three tiny stick figure submarines float in a cartoon bathtub with bubbles",
+            "cartoon_keywords": "soda navy submarine cartoon",
+            "motion_type": "zoom_in",
+            "mood": "shocking"
         }},
         {{
             "id": 2,
-            "text": "It sounds impossible, but the biology is actually simple math.",
-            "is_avatar": true,
-            "avatar_outfit": "outdoor national park ranger khaki jacket",
-            "avatar_background": "Yellowstone pine forest with mountain peaks in background",
-            "avatar_expression": "curious and leaning forward directly at camera",
-            "visual_1": "person shocked looking at camera",
-            "visual_2": "blackboard math equations chalk",
-            "mood": "educational"
+            "text": "The Soviet Union was practically bankrupt and desperately wanted American soda.",
+            "stickman_prompt": "An exhausted stick figure in a giant Russian ushanka fur hat shaking an empty upside-down piggy bank with moths flying out",
+            "cartoon_keywords": "empty piggy bank cartoon",
+            "motion_type": "zoom_out",
+            "mood": "funny"
         }}
     ]
     """

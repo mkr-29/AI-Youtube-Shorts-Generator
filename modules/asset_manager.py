@@ -4,33 +4,27 @@ import random
 import subprocess
 import urllib.parse
 from dotenv import load_dotenv
+from modules.stickman_engine import StickmanEngine
 
 class AssetManager:
     """
-    Self-healing multi-tier visual asset harvester:
-    1. Pexels Stock Video API (if PEXELS_API_KEY is configured)
-    2. Pixabay Stock Video API (if PIXABAY_API_KEY is configured - instant free key)
-    3. Pollinations AI / Flux (Zero-key default: generates 1080x1920 photorealistic scenes
-       with smooth Ken Burns motion via FFmpeg)
+    Primary Visual Engine: 100% Custom Stickman Cartoon Explainer (MinutePhysics / Casually Explained style).
+    Draws custom comic doodle panels matching the exact narration sentences with dynamic camera motion.
+    Also retains fallback stock video search for non-stickman modes.
     """
 
     def __init__(self):
         load_dotenv()
         self.pexels_key = os.getenv("PEXELS_API_KEY")
         self.pixabay_key = os.getenv("PIXABAY_API_KEY")
+        self.stickman_engine = StickmanEngine()
 
         self.assets_dir = os.path.join(os.getcwd(), "assets", "video_clips")
         self.temp_dir = os.path.join(os.getcwd(), "assets", "temp")
         os.makedirs(self.assets_dir, exist_ok=True)
         os.makedirs(self.temp_dir, exist_ok=True)
 
-        sources = []
-        if self.pexels_key:
-            sources.append("Pexels Video")
-        if self.pixabay_key:
-            sources.append("Pixabay Video")
-        sources.append("Pollinations AI Flux (Zero-Key)")
-        print(f"🎨 Visual Pipeline Active: {' ➔ '.join(sources)}")
+        print("🎨 Visual Pipeline Active: ✏️ Stickman Cartoon Explainer Engine (100% Custom Animated Doodles)")
 
     def search_pexels(self, query: str, duration_min: int = 4):
         """Searches Pexels for a portrait video."""
@@ -191,34 +185,24 @@ class AssetManager:
 
     def get_videos(self, script_data):
         """
-        Acquires two visual clips per scene (A and B).
-        Guarantees that every scene has valid visuals.
+        Renders 100% custom-illustrated Stickman Cartoon scenes for every narration beat.
+        Guarantees that every visual literally acts out what is being narrated.
         """
-        print("🎥 Acquiring Visual Clips for all scenes...")
+        print("✏️ Rendering Custom Stickman Comic Scenes for all narration beats...")
         video_pairs = []
 
         for scene in script_data:
             scene_id = scene['id']
-            query_a = scene.get('visual_1', scene.get('keywords', 'intriguing mystery'))
-            query_b = scene.get('visual_2', query_a)
+            # Render dedicated stickman comic animation for this beat
+            clip_path = self.stickman_engine.render_scene(scene)
 
-            # Get Clip A
-            path_a = self.fetch_clip(query_a, f"scene_{scene_id}_a.mp4")
-
-            # Get Clip B
-            path_b = self.fetch_clip(query_b, f"scene_{scene_id}_b.mp4")
-
-            # Self-healing fallbacks
-            if not path_a and path_b:
-                path_a = path_b
-            if not path_b and path_a:
-                path_b = path_a
-
-            if path_a and path_b:
-                video_pairs.append((path_a, path_b))
-                print(f"   ✅ Scene {scene_id} Visuals Ready.")
+            if clip_path:
+                video_pairs.append((clip_path, None))
+                print(f"   ✅ Stickman Scene {scene_id} Ready.")
             else:
-                print(f"   ❌ Scene {scene_id} Critical Failure (No visual produced).")
-                video_pairs.append(None)
+                # Robust fallback to AI visual synthesis if needed
+                query = scene.get('stickman_prompt') or scene.get('text', 'cartoon explanation')
+                fallback = self.generate_ai_clip(query, f"stickman_{scene_id}.mp4", duration=scene.get('duration', 4.0))
+                video_pairs.append((fallback, None) if fallback else None)
 
         return video_pairs
