@@ -97,6 +97,9 @@ async def generate_one(args):
     """
     Runs the full pipeline once. Returns the final video path, or None on failure.
     """
+    # Always clean stale temporary assets before starting a new run
+    clean_cache()
+
     lang = getattr(args, 'lang', 'en')
     default_voice = 'en-US-ChristopherNeural' if lang == 'en' else 'pt-BR-FranciscaNeural'
     voice = args.voice if args.voice != 'en-US-ChristopherNeural' else default_voice
