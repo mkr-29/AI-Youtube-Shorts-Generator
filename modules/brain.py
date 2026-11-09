@@ -110,11 +110,20 @@ class ContentBrain:
       - **visual_2:** Matches the *end* of the sentence or provides a reaction/context.
     - **Strictly Literal:** If the text is "The economy crashed," do NOT search "sad man". Search "Stock market red chart".
 
+    ### 3. HOST AVATAR REQUIREMENTS (Personal Branding):
+    - Choose EXACTLY 2 middle scenes (e.g., Scene 2 for Context setup, and Scene 6 or 7 for the Big Plot Twist) where our Host Avatar appears full-screen speaking directly to the camera.
+    - For these scenes, set "is_avatar": true.
+    - "avatar_outfit": Describe realistic clothing matching this specific video topic (e.g., "vintage brown leather archaeologist jacket", "white lab coat over navy shirt", "navy aviator bomber jacket", "1980s corporate suit").
+    - "avatar_background": Describe a cinematic environment matching this specific video topic (e.g., "dusty ancient library with glowing lanterns", "dark particle physics lab with blue lasers", "submerged submarine bridge with monitors").
+    - "avatar_expression": Describe his facial expression (e.g., "shocked and intrigued, wide eyes", "whispering an unbelievable secret", "intense and analytical").
+    - For all other non-avatar scenes, set "is_avatar": false.
+
     ### OUTPUT FORMAT (Strict JSON):
     [
         {{
             "id": 1,
             "text": "In 1995, fourteen wolves were released into Yellowstone Park, and they changed the rivers.",
+            "is_avatar": false,
             "visual_1": "wolves running snow aerial",
             "visual_2": "river flowing forest drone",
             "mood": "intriguing" 
@@ -122,6 +131,10 @@ class ContentBrain:
         {{
             "id": 2,
             "text": "It sounds impossible, but the biology is actually simple math.",
+            "is_avatar": true,
+            "avatar_outfit": "outdoor national park ranger khaki jacket",
+            "avatar_background": "Yellowstone pine forest with mountain peaks in background",
+            "avatar_expression": "curious and leaning forward directly at camera",
             "visual_1": "person shocked looking at camera",
             "visual_2": "blackboard math equations chalk",
             "mood": "educational"

@@ -3,6 +3,7 @@ import glob
 import random
 import ffmpeg
 from modules.subtitle_renderer import SubtitleRenderer
+from modules.avatar_engine import AvatarEngine
 
 class Composer:
     def __init__(self):
@@ -17,6 +18,7 @@ class Composer:
         
         self.transitions = ['fade', 'diagbr', 'diagtl']
         self.subtitle_renderer = SubtitleRenderer()
+        self.avatar_engine = AvatarEngine()
 
     def get_duration(self, filepath):
         try:
@@ -25,9 +27,10 @@ class Composer:
         except Exception:
             return 0.0
 
-    def process_scene(self, scene, video_pair, is_avatar=False):
+    def process_scene(self, scene, video_pair, is_avatar=False, is_dynamic_avatar=False):
         """
-        Combines Audio with Visuals, injecting dual stock clips and burning kinetic subtitles.
+        Combines Audio with Visuals, injecting dual stock clips or contextual avatar,
+        and burning kinetic subtitles.
         """
         scene_id = scene['id']
         audio_path = scene['audio_path']
@@ -40,16 +43,27 @@ class Composer:
             input_audio = ffmpeg.input(audio_path)
 
             if is_avatar:
-                print(f"   ⚙️ Processing Scene {scene_id}: 🤖 Avatar Mode (Cropped)")
-                video_stream = (
-                    ffmpeg.input(video_pair[0], stream_loop=-1)
-                    .trim(duration=total_duration + 0.5)
-                    .setpts('PTS-STARTPTS')
-                    .filter('crop', 'iw', 'ih-150', 0, 0)
-                    .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
-                    .filter('crop', 1080, 1920)
-                    .filter('fps', fps=30, round='up')
-                )
+                if is_dynamic_avatar and video_pair[0]:
+                    print(f"   👤 Processing Scene {scene_id}: 🌟 Dynamic Character Avatar Mode")
+                    video_stream = (
+                        ffmpeg.input(video_pair[0])
+                        .trim(duration=total_duration + 0.5)
+                        .setpts('PTS-STARTPTS')
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
+                        .filter('crop', 1080, 1920)
+                        .filter('fps', fps=30, round='up')
+                    )
+                else:
+                    print(f"   ⚙️ Processing Scene {scene_id}: 🤖 Legacy Avatar Mode (Cropped)")
+                    video_stream = (
+                        ffmpeg.input(video_pair[0], stream_loop=-1)
+                        .trim(duration=total_duration + 0.5)
+                        .setpts('PTS-STARTPTS')
+                        .filter('crop', 'iw', 'ih-150', 0, 0)
+                        .filter('scale', 1080, 1920, force_original_aspect_ratio='increase')
+                        .filter('crop', 1080, 1920)
+                        .filter('fps', fps=30, round='up')
+                    )
             else:
                 print(f"   ⚙️ Processing Scene {scene_id}: 🎞️ A/B Split Mode")
                 path_a, path_b = video_pair
@@ -111,25 +125,45 @@ class Composer:
     def render_all_scenes(self, script_data, video_pairs):
         rendered_paths = []
         avatar_indices = []
-        
-        if len(script_data) >= 4 and os.path.exists(self.avatar_path):
+        use_dynamic_avatar = self.avatar_engine.persona.get("enabled", True)
+
+        # 1. Identify which scenes should be Avatar scenes
+        # First check if script explicitly flagged avatar scenes
+        flagged_indices = [i for i, s in enumerate(script_data) if s.get("is_avatar")]
+        if flagged_indices:
+            avatar_indices = flagged_indices
+        elif use_dynamic_avatar and len(script_data) >= 4:
+            # Auto-assign 1 or 2 middle scenes if none explicitly flagged
             valid_range = list(range(1, len(script_data) - 1))
-            count_to_pick = 2 if len(valid_range) >= 2 else 1
+            count_to_pick = min(self.avatar_engine.persona.get("avatar_scenes_count", 2), len(valid_range))
             avatar_indices = sorted(random.sample(valid_range, count_to_pick))
-            human_readable_indices = [i + 1 for i in avatar_indices]
-            print(f"🎲 Avatar set for Scenes: {human_readable_indices}")
+
+        if avatar_indices:
+            human_readable = [i + 1 for i in avatar_indices]
+            print(f"👤 Character Avatar scheduled for Scenes: {human_readable}")
 
         for i, scene in enumerate(script_data):
             current_pair = video_pairs[i] if i < len(video_pairs) else None
             is_avatar = False
+            is_dynamic_avatar = False
 
             if i in avatar_indices:
-                current_pair = (self.avatar_path, None)
                 is_avatar = True
-            elif current_pair is None:
+                # Generate dynamic contextual avatar video
+                if use_dynamic_avatar:
+                    avatar_video = self.avatar_engine.render_scene(scene)
+                    if avatar_video:
+                        current_pair = (avatar_video, None)
+                        is_dynamic_avatar = True
+                
+                # Fallback to legacy avatar if dynamic generation was unavailable
+                if not is_dynamic_avatar and os.path.exists(self.avatar_path):
+                    current_pair = (self.avatar_path, None)
+
+            if current_pair is None:
                 continue 
 
-            output_path = self.process_scene(scene, current_pair, is_avatar)
+            output_path = self.process_scene(scene, current_pair, is_avatar, is_dynamic_avatar)
             if output_path:
                 rendered_paths.append(output_path)
         
